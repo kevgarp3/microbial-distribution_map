@@ -1,0 +1,3 @@
+project: 'skin-microbiome'
+bioprojects_list: 'data/ncbi_skin-metagenome_sampleIDs.txt'
+collapse_config: 'workflow/config/collapse-config.tsv'

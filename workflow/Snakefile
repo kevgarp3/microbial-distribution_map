@@ -1,0 +1,54 @@
+# WORKFLOW CONFIGURATION
+import pandas as pd
+
+configfile: "workflow/config/config.yaml"
+project = config["project"]
+
+collapse_config_df = pd.read_csv(config["collapse_config"], sep="\t", dtype={"target_col": str}).set_index("target_col", drop=False)
+TARGET_COLS = collapse_config_df.index.tolist()
+
+## Declaring directory variables
+dir_d = "data"
+dir_s = "src"
+dir_w = "workflow"
+dir_r = f"results/{project}"
+dir_r0 = f"{dir_r}/0_data"
+dir_r1 = f"{dir_r}/1_explor-distribution/"
+
+# WORKFLOW RULES
+rule all:
+    input: expand(f"{dir_r0}/{{target_col}}-collapsed_metadata_bio-projects.tsv", target_col=TARGET_COLS)
+
+rule create_sample_folder:
+    input: directory(dir_d), 
+           directory(dir_s), 
+           directory(dir_w),
+           directory("results")
+    output: directory(dir_r)
+    shell: "mkdir -p {output}"
+
+rule create_sample_tree:
+    input: directory(dir_r)
+    output:
+        directory(dir_r0),
+        directory(dir_r1)
+    shell: "mkdir -p {output}"
+
+rule check_bioprojects_list:
+    input: 
+        bp_list=config["bioprojects_list"],
+        outdir=directory(dir_r0)
+    output: f"{dir_r0}/bio-projects.txt"
+    shell: "ln -s $(realpath {input.bp_list}) {output}"
+
+rule get_bioprojects_metadata:
+    input: f"{dir_r0}/bio-projects.txt"
+    output: f"{dir_r0}/metadata_bio-projects.tsv"        
+    shell: "./src/get-metadata.sh {input} {dir_r0}"
+
+rule collapse_metadata:
+    input: metadata=f"{dir_r0}/metadata_bio-projects.tsv",
+           categories=lambda wc: collapse_config_df.loc[wc.target_col, "categories"]
+    output: f"{dir_r0}/{target_col}-collapsed_metadata_bio-projects.tsv"
+    params: id_col=lambda wc: collapse_config_df.loc[wc.target_col, "id_col"]
+    shell: "python ./src/collapse-col_tsv.py {input.metadata} {wildcards.target_col} -i {params.id_col} -O {dir_r0} -C {input.categories}"

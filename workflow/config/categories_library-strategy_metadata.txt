@@ -1,0 +1,3 @@
+Shotgun: WG*, WC*
+Amplicon-Seq: amplicon*
+Other: other, MNase*, poolclone*, rna*, targeted*, WX*

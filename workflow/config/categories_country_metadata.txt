@@ -1,0 +1,5 @@
+USA: US*, United States*
+UK: UK, United K*
+Finland: *Finland
+Puerto Rico: P*Rico*
+N/A: not applicable, , missing
