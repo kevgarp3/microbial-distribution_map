@@ -1,14 +1,14 @@
 #!/usr/bin/python3
 """
-Title: collapse-col_tsv.py
+Title: categorize_tsv_fields.py
 
 Description:
-This script processes a tab-delimited file to collapse a specified field into given
-categories as specified by the user.
+This script processes a tab-delimited file to categorize the fields of a specified column
+into categories defined by the user.
 
 Usage:
 '''BASH
-python collapse-col_tsv.py <tsv_file> <target_col> \
+python categorize_tsv_fields.py <tsv_file> <target_col> \
     -i <id_col (optional)> \
     -O <output_dir (optional)> \
     -C <categories (optional)> \
@@ -28,13 +28,13 @@ in the text file is the following (one category per line):
     '''
 
 Output:
-A collapsed tab-delimited file only containig the id and target columns, as well as the collapsed
-category column, as applicable.
+A tab-delimited file only containig the id and target columns, as well as the
+categorized column, as applicable.
 
 Procedure:
     Section 0.1: Importing the necessary modules.
     Section 0.2: Collecting the user-entered parameters (from the command line).
-    Section 1: Validating the user-defined paramaters and reading the tsv file.
+    Section 1: Validating the user-defined parameters and reading the tsv file.
     Section 2: Processing the tsv-file according to the user specifications.
     Section 3: Writing an output collapsed file.
 
@@ -55,11 +55,11 @@ import fnmatch
 ######################################################################################
 # Declaring the argument parser.
 argParser = argparse.ArgumentParser(
-            prog="collapse-col_tsv.py", 
-            usage="python collapse-col_tsv.py <tsv_file> <target_col> -i <id_col> "
+            prog="categorize_tsv_fields.py", 
+            usage="python categorize_tsv_fields.py <tsv_file> <target_col> -i <id_col> "
                   "-O <output_dir> -C <categories>",
-            description="TThis script processes a tab-delimited file to collapse a specified "
-                  "field into given categories as specified by the user.",
+            description="This script processes a tab-delimited file to categorize the "
+                        "fields of a specified column into categories defined by the user.",
             epilog="Version: 1.0 (11-Mar-2026); Author: Kevin García Prado")
 
 # Adding positional arguments to the argument parser.
@@ -82,8 +82,6 @@ args = argParser.parse_args()
 ######################################################################################
 #%% Section 1. Validating the user-defined arguments and reading the tsv file.
 ######################################################################################
-# Checking that all arguments are valid.
-print("")
 # Checking that the tsv_file exists.
 if not Path(args.tsv_file).is_file():
     print("The provided tsv_file does not exist: " + args.tsv_file); exit()
@@ -167,7 +165,7 @@ if category_dict:
             # the patterns for the specific category.
             matched_fields = []
             for field in record_dict.keys():
-                # print(category + " (" + pattern + "): " + field + " ... " + str(fnmatch.fnmatch(field, pattern)))
+                #print(category + " (" + pattern + "): " + field + " ... " + str(fnmatch.fnmatch(field, pattern)))
                 if fnmatch.fnmatch(field, pattern):
                     matched_fields.append(field)
                     # print(category + " (" + pattern + ")" + ": " + field)
@@ -194,7 +192,7 @@ if category_dict:
 ######################################################################################
 #%% Section 3: Writing an output collapsed file.
 ######################################################################################
-outfile_name = args.output_dir + str(args.target_col + "-" + "collapsed_" + Path(args.tsv_file).stem + ".tsv")
+outfile_name = args.output_dir + "categorized-" + args.target_col + "_" + str(Path(args.tsv_file).stem).split("_")[1] + ".tsv"
 with open(outfile_name, "w") as outfile:
     # If there is a category_dict set up...
     if category_dict:

@@ -1,54 +1,81 @@
-# WORKFLOW CONFIGURATION
+######################################################################################
+#%% WORKFLOW CONFIGURATION
+######################################################################################
 import pandas as pd
+import os
 
 configfile: "workflow/config/config.yaml"
 project = config["project"]
 
-collapse_config_df = pd.read_csv(config["collapse_config"], sep="\t", dtype={"target_col": str}).set_index("target_col", drop=False)
+collapse_config_df = pd.read_csv(config["collapse_config"],
+                     sep="\t", 
+                     dtype={"target_col": str}).set_index("target_col", drop=False)
 TARGET_COLS = collapse_config_df.index.tolist()
 
-## Declaring directory variables
-dir_d = "data"
-dir_s = "src"
-dir_w = "workflow"
-dir_r = f"results/{project}"
-dir_r0 = f"{dir_r}/0_data"
-dir_r1 = f"{dir_r}/1_explor-distribution/"
+histograms_config_df = pd.read_csv(config["histograms_config"], 
+                     sep="\t", 
+                     dtype={"#colname": str}).set_index("#colname", drop=False)
+HIST_COLS = histograms_config_df.index.tolist()
 
-# WORKFLOW RULES
+## Declaring directory variables.
+dir_d = "data/"
+dir_s = "src/"
+dir_w = "workflow/"
+dir_r = f"results/{project}/"
+dir_r0 = f"{dir_r}0_data/"
+dir_r1 = f"{dir_r}1_metadata/"
+dir_r2 = f"{dir_r}2_histograms/"
+dir_r3 = f"{dir_r}3_get-fastqc/"
+dir_r4 = f"{dir_r}4_krona-plots/"
+dir_r5 = f"{dir_r}5_map/"
+
+## Ensuring all the previously declared directories exist.
+os.makedirs(dir_d, exist_ok=True)
+os.makedirs(dir_s, exist_ok=True)
+os.makedirs(dir_w, exist_ok=True)
+os.makedirs(dir_r0, exist_ok=True)
+os.makedirs(dir_r1, exist_ok=True)
+os.makedirs(dir_r2, exist_ok=True)
+os.makedirs(dir_r3, exist_ok=True)
+os.makedirs(dir_r4, exist_ok=True)
+
+######################################################################################
+#%% WORKFLOW RULES
+######################################################################################
 rule all:
-    input: expand(f"{dir_r0}/{{target_col}}-collapsed_metadata_bio-projects.tsv", target_col=TARGET_COLS)
-
-rule create_sample_folder:
-    input: directory(dir_d), 
-           directory(dir_s), 
-           directory(dir_w),
-           directory("results")
-    output: directory(dir_r)
-    shell: "mkdir -p {output}"
-
-rule create_sample_tree:
-    input: directory(dir_r)
-    output:
-        directory(dir_r0),
-        directory(dir_r1)
-    shell: "mkdir -p {output}"
+    input: dir_r1 + "clean_metadata.tsv"
 
 rule check_bioprojects_list:
-    input: 
-        bp_list=config["bioprojects_list"],
-        outdir=directory(dir_r0)
-    output: f"{dir_r0}/bio-projects.txt"
-    shell: "ln -s $(realpath {input.bp_list}) {output}"
+    input: config["bioprojects_list"]
+    output: dir_r0 + "bio-projects.txt"
+    shell: "ln -s $(realpath {input}) {output}"
 
 rule get_bioprojects_metadata:
-    input: f"{dir_r0}/bio-projects.txt"
-    output: f"{dir_r0}/metadata_bio-projects.tsv"        
-    shell: "./src/get-metadata.sh {input} {dir_r0}"
+    input: dir_r0 + "bio-projects.txt"
+    output: dir_r1 + "raw_metadata.tsv"
+    params: outdir=dir_r1
+    shell: "./src/get_metadata.sh {input} {params.outdir}"
 
-rule collapse_metadata:
-    input: metadata=f"{dir_r0}/metadata_bio-projects.tsv",
-           categories=lambda wc: collapse_config_df.loc[wc.target_col, "categories"]
-    output: f"{dir_r0}/{target_col}-collapsed_metadata_bio-projects.tsv"
-    params: id_col=lambda wc: collapse_config_df.loc[wc.target_col, "id_col"]
-    shell: "python ./src/collapse-col_tsv.py {input.metadata} {wildcards.target_col} -i {params.id_col} -O {dir_r0} -C {input.categories}"
+rule categorize_metadata:
+    input:
+        metadata=dir_r1 + "raw_metadata.tsv",
+        categories=lambda wc: collapse_config_df.loc[wc.col, "categories"]
+    output:
+        dir_r1 + "categorized-{col}_metadata.tsv"
+    params:
+        id_col=lambda wc: collapse_config_df.loc[wc.col, "id_col"],
+        outdir=dir_r1
+    shell:
+        "python ./src/categorize_tsv_fields.py {input.metadata} {wildcards.col} "
+        "-i {params.id_col} -O {params.outdir} -C {input.categories}"
+
+rule create_clean_metadata:
+    input: raw=dir_r1 + "raw_metadata.tsv",
+           tsvs=expand(dir_r1 + "categorized-{col}_metadata.tsv", col=TARGET_COLS)
+    output: dir_r1 + "clean_metadata.tsv"
+    shell: "./src/merge_categorized_tsvs.sh {input.raw} {output} {input.tsvs}"
+
+#rule launch_app:
+#    input: dir_r1 + "clean_metadata.tsv"
+#    output: dir_r2 + "histogram.png"
+#    shell: "streamlit run ./src/main.py"

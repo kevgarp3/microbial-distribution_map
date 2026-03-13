@@ -48,13 +48,10 @@ The databases used in this project can be downloaded by using `wget` with each o
 
 The following list presents all software dependencies (and versions) required to execute this workflow:
 
-* python=3.12.12
-* blast=2.17.0
-* proteinortho=6.3.6
-* busco=6.0.0
-* clustalo=1.2.4
-* raxml=8.2.13
-* phylip=3.69.7
+* 
+* 
+* 
+* 
 
 All the previous dependencies can be easily installed within a conda environment by running the following command:
 

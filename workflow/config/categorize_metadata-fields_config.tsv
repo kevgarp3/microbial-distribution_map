@@ -1,2 +1,3 @@
+target_col	id_col	categories
 country	sample_accession	workflow/config/categories_country_metadata.txt
 library_strategy	sample_accession	workflow/config/categories_library-strategy_metadata.txt

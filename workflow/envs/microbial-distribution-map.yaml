@@ -1,0 +1,13 @@
+name: microbial-distribution-map
+channels:
+    - conda-forge
+    - bioconda
+dependencies:
+    - python=3.13.12 #3.7 3.9
+    - pandas=3.0.1
+    - metaphlan=4.2.4
+    - plotly=6.6.0
+    - maplotlib=3.10.8
+    - pip
+    - pip:
+        - streamlit=1.55.0

@@ -8,8 +8,7 @@ mkdir -p "$tmp_dir"
 tmp_prefix="${tmp_dir}.chunk_"
 split -l 215 "$bp_list" "$tmp_prefix"
 
-base_bp_list=$(basename "$bp_list")
-metadata="${metadata}metadata_${base_bp_list%%.*}.tsv"
+metadata="${metadata}raw_metadata.tsv"
 
 echo $cols | tr "," "\t" > $metadata
 for f in ${tmp_prefix}*; do
