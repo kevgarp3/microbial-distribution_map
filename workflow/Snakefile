@@ -25,8 +25,8 @@ dir_r = f"results/{project}/"
 dir_r0 = f"{dir_r}0_data/"
 dir_r1 = f"{dir_r}1_metadata/"
 dir_r2 = f"{dir_r}2_histograms/"
-dir_r3 = f"{dir_r}3_get-fastqc/"
-dir_r4 = f"{dir_r}4_krona-plots/"
+dir_r3 = f"{dir_r}3_fastq_downloads/"
+dir_r4 = f"{dir_r}4_krona_plots/"
 dir_r5 = f"{dir_r}5_map/"
 
 ## Ensuring all the previously declared directories exist.
@@ -38,12 +38,13 @@ os.makedirs(dir_r1, exist_ok=True)
 os.makedirs(dir_r2, exist_ok=True)
 os.makedirs(dir_r3, exist_ok=True)
 os.makedirs(dir_r4, exist_ok=True)
+os.makedirs(dir_r5, exist_ok=True)
 
 ######################################################################################
 #%% WORKFLOW RULES
 ######################################################################################
 rule all:
-    input: dir_r1 + "clean_metadata.tsv"
+    input: dir_r2 + "histogram.png"
 
 rule check_bioprojects_list:
     input: config["bioprojects_list"]
@@ -75,7 +76,7 @@ rule create_clean_metadata:
     output: dir_r1 + "clean_metadata.tsv"
     shell: "./src/merge_categorized_tsvs.sh {input.raw} {output} {input.tsvs}"
 
-#rule launch_app:
-#    input: dir_r1 + "clean_metadata.tsv"
-#    output: dir_r2 + "histogram.png"
-#    shell: "streamlit run ./src/main.py"
+rule launch_app:
+    input: dir_r1 + "clean_metadata.tsv"
+    output: dir_r2 + "histogram.png"
+    shell: "streamlit run ./src/main.py"
