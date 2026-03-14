@@ -5,25 +5,36 @@ import pandas as pd
 import os
 import sys
 sys.path.insert(0, "src")
-from prep_fastq_download import get_fastq_links, call_download_fastqs
+from prep_fastq_download import get_fastq_links, check_existing_fastqs, call_download_fastqs
+from snakemake.io import glob_wildcards
 
 configfile: "workflow/config/config.yaml"
 project = config["project"]
+conda_env_yaml = config["conda_env_yaml"]
 
-# Read the configuration file for metadata categories
+## Read the configuration file for metadata categories
 config_metadata_categories = pd.read_csv(config["config_metadata_categories"],
                      sep="\t", 
                      dtype={"target_col": str}).set_index("target_col", drop=False)
 TARGET_COLS = config_metadata_categories.index.tolist()
 
-# Read the configuration file for FASTQ downloads
+## Read the configuration file for FASTQ downloads
 config_fastq_downloads = pd.read_csv(config["config_fastq_downloads"], 
             sep="\t", 
             dtype={"run_accession": str}).set_index("run_accession", drop=False)
 RUN_ACCESSIONS = config_fastq_downloads.index.tolist()
 
+## Declaring required file extensions for the bowtie2 database to be considered installed.
+BOWTIE2DB_EXTS=[".1.bt2l", ".2.bt2l", ".3.bt2l",  ".4.bt2l", 
+                ".rev.1.bt2l", ".rev.2.bt2l", ".pkl"]
+
+######################################################################################
+#%% TREE DIRECTORY CONFIGURATION
+######################################################################################
+
 ## Declaring directory variables.
 dir_d = "data/"
+dir_d_db = f"{dir_d}databases/bowtie2_db/"
 dir_s = "src/"
 dir_w = "workflow/"
 dir_r = f"results/{project}/"
@@ -35,24 +46,22 @@ dir_r0_3 = f"{dir_r0}0-3_fastq_downloads/"
 dir_r0_4 = f"{dir_r0}0-4_bowtie2_db/"
 
 dir_r1 = f"{dir_r}1_plots/"
-dir_r1_1 = f"{dir_r1}/1-1_histograms/"
-dir_r1_2 = f"{dir_r1}/1-2_krona_plots/"
+dir_r1_1 = f"{dir_r1}1-1_histograms/"
+dir_r1_2 = f"{dir_r1}1-2_krona_plots/"
+dir_r1_2_pf = f"{dir_r1_2}prep-files/"
 dir_r2 = f"{dir_r}2_map/"
 
 ## Ensuring all the previously declared directories exist.
-os.makedirs(dir_d, exist_ok=True)
-os.makedirs(dir_s, exist_ok=True)
-os.makedirs(dir_w, exist_ok=True)
-os.makedirs(dir_r0_1, exist_ok=True)
-os.makedirs(dir_r0_2, exist_ok=True)
-os.makedirs(dir_r0_3, exist_ok=True)
-os.makedirs(dir_r0_4, exist_ok=True)
-os.makedirs(dir_r1, exist_ok=True)
-os.makedirs(dir_r2, exist_ok=True)
-os.makedirs(dir_r3, exist_ok=True)
+all_dirs = [dir_d_db, dir_s, dir_w, 
+            dir_r0_1, dir_r0_2, dir_r0_3, dir_r0_4, 
+            dir_r1_1, dir_r1_2_pf, 
+            dir_r2]
+
+for dir in all_dirs:
+    os.makedirs(dir, exist_ok=True)
 
 ######################################################################################
-#%% WORKFLOW RULES
+#%% Declaring essential functions
 ######################################################################################
 
 def get_fastq_outputs(wildcards):
@@ -60,14 +69,32 @@ def get_fastq_outputs(wildcards):
     FASTQS = glob_wildcards(dir_r0_3 + "{file}.fastq.gz").file
     return expand(dir_r0_3 + "{file}.fastq.gz", file=FASTQS)
 
+def get_fastqs_for_metaphlan(wildcards):
+    FASTQS = sorted(glob_wildcards(dir_r0_3 + "{file}.fastq.gz").file)
+    run_fastqs = [f"{dir_r0_3}{f}.fastq.gz" for f in FASTQS if f.startswith(wildcards.run_acc)]
+    
+    paired = [f for f in run_fastqs if f.endswith("_1.fastq.gz") or f.endswith("_2.fastq.gz")]
+    if paired:
+        if len(paired) == 2:
+            run_fastqs = sorted(paired)
+        else:
+            run_fastqs = []
+    
+    if not run_fastqs:
+        print("Not enough FASTQ files were found for: " + wildcards.run_acc)
+    return run_fastqs
+
+######################################################################################
+#%% WORKFLOW RULES
+######################################################################################
+
 rule all:
-    input: dir_r0_2 + "clean_metadata.tsv", 
-           get_fastq_outputs
+    input: "disappear.sh"
 
 rule check_bioprojects_list:
     input: config["bioprojects_list"]
     output: dir_r0_1 + "bio-projects.txt"
-    shell: "ln -s $(realpath {input}) {output}"
+    shell: "ln -sf $(realpath {input}) {output}"
 
 rule get_bioprojects_metadata:
     input: dir_r0_1 + "bio-projects.txt"
@@ -98,42 +125,84 @@ rule create_clean_metadata:
 # expected by downstream rules.
 checkpoint get_fastqs:
     input: dir_r0_2 + "clean_metadata.tsv"
-    output: dir_r0_3 + ".download_complete.txt"
+    output: dir_r0_3 + ".workflow_fastqs_saved.txt"
+    conda: conda_env_yaml
     run:
         clean_metadata_df = pd.read_csv(input[0], sep="\t")
         links = get_fastq_links(clean_metadata_df, RUN_ACCESSIONS)
-        if links:    
-            result = call_download_fastqs(output[0], links)
-            if result.returncode != 0:
-                raise RuntimeError(f"Download failed:\n{result.stderr}")
+        links = check_existing_fastqs(dir_r0_3, links)
+        result = call_download_fastqs(dir_r0_3, links, f=True)
+        if result.returncode != 0:
+            raise RuntimeError(f"Download failed:\n{result.stderr}")
         open(output[0], "w").close()
 
 rule get_bowtie2_db:
-    input: get_fastq_outputs,
-           dir_r0_3 + ".download_complete.txt" # Check if needed
-    output: dir_r0_4 + "" # To be completed
+    input: db_dir=dir_d_db,
+           clean=dir_r0_2 + "clean_metadata.tsv",
+           fastqs=get_fastq_outputs,
+           dwld_check=dir_r0_3 + ".workflow_fastqs_saved.txt"
+    output: expand(dir_r0_4 + config["bowtie2db_version"] + "{ext}", ext=BOWTIE2DB_EXTS)
     params: db_v=config["bowtie2db_version"],
-            outdir=dir_r0_4
-    shell: "metaphlan --install --index {params.db_v} --db_dir {params.outdir}"
+            db_dir=dir_r0_4
+    conda: conda_env_yaml
+    shell: 
+        """
+        metaphlan --install --index {params.db_v} --db_dir {input.db_dir}
+        for f in {input.db_dir}/{params.db_v}*; do
+            ln -sf "$(realpath "$f")" {params.db_dir}
+        done
+        """
 
-rule plot_kronas:
-    input: get_fastq_outputs,
-           dir_r0_3 + ".download_complete.txt", # Check if needed
-           dir_r0_4 + "" # To be completed
-    output: expand(dir_r2 + "") # To be completed
-    params: db_dir=dir_r0_4,
-            indir=dir_r0_3,
-            outdir=dir_r0_3,
-            run_accession="" # To be completed
+rule get_metaphlan_profile:
+    input: db_files=expand(dir_r0_4 + config["bowtie2db_version"] + "{ext}", ext=BOWTIE2DB_EXTS),
+           fastqs=lambda wc: get_fastqs_for_metaphlan(wc)
+    output: profile=dir_r1_2_pf + "{run_acc}_profile.tsv",
+            mapout=dir_r1_2_pf + "{run_acc}.bowtie2.bz2"
+    params: db_v=config["bowtie2db_version"],
+            db_dir=dir_r0_4
+    conda: conda_env_yaml
     shell:
         """
-        ./src/run_metaphlan.sh {params.db_dir} {params.indir} {params.run_accession} {params.outdir}
+        FASTQS=$(echo "{input.fastqs}" | tr " " ",")
+        metaphlan $FASTQS --input_type fastq \
+            --nproc 15 \
+            --index {params.db_v} \
+            --db_dir {params.db_dir} \
+            --mapout {output.mapout} \
+            --ignore_eukaryotes --ignore_archaea \
+            -o "{output.profile}"
         """
 
+rule get_krona_precursors:
+    input: profile=dir_r1_2_pf + "{run_acc}_profile.tsv",
+           mapout=dir_r1_2_pf + "{run_acc}.bowtie2.bz2"
+    output: dir_r1_2_pf + "{run_acc}_krona.tsv"
+    shell: "metaphlan2krona.py --profile {input.profile} --krona {output}"
+
+rule get_krona_htmls:
+    input: dir_r1_2_pf + "{run_acc}_krona.tsv"
+    output: dir_r1_2 + "{run_acc}_krona.html"
+    shell: "ktImportText {input} -o {output}"
+
 rule launch_app:
-    input: dir_r0_2 + "clean_metadata.tsv",
-           get_fastq_outputs,
-           dir_r0_3 + ".download_complete.txt"
-           #expand(dir_r0_3 + "{file}.fastq.gz", file=get_fastq_outputs)
-    # output: dir_r1 + "histogram.png"
+    input: expand(dir_r1_2 + "{run_acc}_krona.html", run_acc=RUN_ACCESSIONS),
+    output: dir_r1_1 + ".app_histograms_saved.txt",
+            dir_r2 + ".app_map_saved.txt"
     shell: "streamlit run ./src/main.py"
+
+rule prepare_next_app_launch:
+    input: dir_r0_3 + ".workflow_fastqs_saved.txt",
+           dir_r1_1 + ".app_histograms_saved.txt",
+           dir_r2 + ".app_map_saved.txt"
+    output: "disappear.sh"
+    shell:
+           """
+            echo "#!/bin/bash > {output}
+            echo "# This is a self-destructing file. Flagging the end of the Snakemake workflow." >> {output}
+            echo "echo "Everything is now prepared for the next app launch via Snakemake!"" >> {output} 
+            echo "echo "Assuming the workflow is ready... launch the app using:" >> {output}
+            echo "echo "snakemake --cores <n> --use-conda"" >> {output} 
+            echo "(sleep 3 && rm -- "$0") &" >> {output}
+            rm {input}
+            chmod +x {output} && ./{output}
+            """

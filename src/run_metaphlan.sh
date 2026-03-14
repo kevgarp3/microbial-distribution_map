@@ -1,19 +1,18 @@
 #!/bin/bash
 db_dir=$1
-indir=$2
-run_accession=$3
-#fastq1=$3
-#fastq2=$4
-outdir=$4 # sample_profile.txt
+outdir=$2
+shift 2
+fastq_files=("$@")
 
+echo $(echo "${fastq_files[@]}" | tr " " ",")
 
-
-metaphlan --install \
-  --input_type fastq \
-  -1 $fastq1 \
-  -2 $fastq2 \
-  --bowtie2out sample.bowtie2.bz2 \
-  -o "${outdir}/${run_accession}_profile.txt"
+#metaphlan ${fastq_files[@]} \ #comma-separated
+# --nproc 15 \
+# --input_type fastq \
+# --mapout ${outdir}/${run_accession}.bowtie2.bz2 \
+# --ignore_eukaryotes \
+# --ignore_archaea \
+# -o "${outdir}/${run_accession}_profile.txt"
 
 # metaphlan2krona.py --profile "${outdir}/${run_accession}_profile.txt" \
 #    --krona "${outdir}/${run_accession}_krona.txt

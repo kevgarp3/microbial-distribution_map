@@ -1,7 +1,7 @@
 #!/bin/bash
 bp_list=$1  # bio-projects list text file
 metadata=$2 # output directory for the metadata file
-cols="run_accession,sample_accession,library_strategy,country,location,fastq_ftp,study_title,sample_description"
+cols="run_accession,sample_accession,library_strategy,country,location,fastq_ftp,fastq_md5,study_title,sample_description"
 
 tmp_dir="${metadata}.tmp_bp-list_chunks/"
 mkdir -p "$tmp_dir"

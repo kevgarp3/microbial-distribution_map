@@ -110,3 +110,7 @@ else:
                                     st.error("Something went wrong!")
                                     st.code(result.stderr)
                         st.success("All fine!")
+
+#from pathlib import Path
+#Path("results/.../.app_histograms_saved.txt").touch()
+#Path("results/.../.app_map_saved.txt").touch()
