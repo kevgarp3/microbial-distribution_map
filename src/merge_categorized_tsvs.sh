@@ -33,20 +33,20 @@ for tsv in "${tsvs[@]}"; do
     sort -t $'\t' -k2,2 "$body" > "${body}.sorted"
     join -t $'\t' -1 2 -2 1 -a 1 -o "$o_format" "${body}.sorted" "$b" > "${body}.new"
     
-    cut -d $'\t' -f2 "$body" | sort > /tmp/body_ids.txt
-    cut -d $'\t' -f1 "$b" | sort > /tmp/b_ids.txt
+    #cut -d $'\t' -f2 "$body" | sort > /tmp/body_ids.txt
+    #cut -d $'\t' -f1 "$b" | sort > /tmp/b_ids.txt
     # Check overlap
-    comm -12 /tmp/body_ids.txt /tmp/b_ids.txt | wc -l  # matching IDs
-    comm -23 /tmp/body_ids.txt /tmp/b_ids.txt | wc -l  # only in body
-    comm -13 /tmp/body_ids.txt /tmp/b_ids.txt | wc -l  # only in b
-    echo ""
+    #comm -12 /tmp/body_ids.txt /tmp/b_ids.txt | wc -l  # matching IDs
+    #comm -23 /tmp/body_ids.txt /tmp/b_ids.txt | wc -l  # only in body
+    #comm -13 /tmp/body_ids.txt /tmp/b_ids.txt | wc -l  # only in b
+    #echo ""
 
-    cut -d $'\t' -f1 "$b" | head -15
-    echo ""
-    cut -d $'\t' -f1 "$body" | head -15
-    echo ""
-    cut -d $'\t' -f2 "$body" | head -15
-    echo ""
+    #cut -d $'\t' -f1 "$b" | head -15
+    #echo ""
+    #cut -d $'\t' -f1 "$body" | head -15
+    #echo ""
+    #cut -d $'\t' -f2 "$body" | head -15
+    #echo ""
 
     mv "${body}.new" "$body"
     # Deleting the temporary header and body files

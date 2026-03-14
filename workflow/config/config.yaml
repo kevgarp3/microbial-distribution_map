@@ -1,4 +1,11 @@
+# Edit the project name, as desired for a new snakemake run:
 project: 'skin-microbiome'
+# Edit the file address so that bioprojects_list points to the correct list of ENAs Bio-Project IDs:
 bioprojects_list: 'data/ncbi_skin-metagenome_sampleIDs.txt'
-collapse_config: 'workflow/config/categorize_metadata-fields_config.tsv'
-histograms_config: 'workflow/config/histograms-config.tsv'
+# Edit the file address so that you can categorize the desired target columns, appropriately.
+config_metadata_categories: 'workflow/config/skin-microbiome_config_metadata_categories.tsv'
+# Edit the file address so that you download the desired FASTQ files before launching the main app 
+# (the functionality is also implemented in the app).
+config_fastq_downloads: 'workflow/config/skin-microbiome_config_fastq_downloads.tsv'
+# Edit the bowtie2db_version name if pertinent.
+bowtie2db_version: 'mpa_vJan21_CHOCOPhlAnSGB_202103'

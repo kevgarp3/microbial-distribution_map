@@ -2,12 +2,12 @@
 # Section 0: Importing Modules, Declaring Hard-Coded Paths and Initializing the App
 ########################################################################################################################################################
 import streamlit as st
+import os
+import signal
 import pandas as pd
 from itertools import compress
 from plot_histograms import plot_singleCol_histogram, plot_twoCol_histogram
-import subprocess
-import os
-import signal
+from prep_fastq_download import get_fastq_links, call_download_fastqs
 
 project_dir = "results/skin-microbiome/" # To further be received by Snakemake
 outdir_hists = project_dir + "2_histograms"
@@ -92,24 +92,21 @@ else:
                         st.plotly_chart(plot_twoCol_histogram(filtered_df, twoCol_hist[0], twoCol_hist[1]))
                         # Asking the user to pick some of the sequencing experiments which to focus on them.  
                         st.info("Please select the sequencing experiments whose FASTQ files you want to download.")
-                        id_of_interest = st.multiselect("Select the run_accession IDs: ", filtered_df["run_accession"])
-                        if id_of_interest:
+                        ids_of_interest = st.multiselect("Select the run_accession IDs: ", filtered_df["run_accession"])
+                        if ids_of_interest:
                             # Implementing a button to download the FASTQ files of the selected Bio-Projects.
                             st.info("Click on \"Download FASTQ Files\" when ready.")
                             if st.button("Download FASTQ Files"):
-                                # Get all fields from the "fastq_ftp" column of the filtered df whose "sample_accession" was selected by the user.
-                                raw_links = filtered_df.loc[filtered_df["run_accession"].isin(id_of_interest), "fastq_ftp"]
-                                # Extract the actual links.
-                                links = [link.strip() for raw_link in raw_links for link in raw_link.strip().split(";")]
+                                # From filtered_df, extracting the links to download the FASTQ files specific to the run_accession IDs selected by the user.
+                                links = get_fastq_links(filtered_df, ids_of_interest)
                                 st.text("Downloads requested from the following URLs:\n" + "\n".join(links))
                                 with st.spinner("Downloading FASTQ files. This might take a while..."):
-                                    result = subprocess.run(["bash", "src/download_fastq.sh", outdir_fastqs] + links, 
-                                        capture_output=True, text=True)
+                                    # Downloading the FASTQ files using the extracted links.
+                                    result = call_download_fastqs(outdir_fastqs, links)
                                 if result.returncode == 0:
                                     st.success("Download complete!")
                                     st.code(result.stdout)
                                 else:
                                     st.error("Something went wrong!")
                                     st.code(result.stderr)
-
                         st.success("All fine!")

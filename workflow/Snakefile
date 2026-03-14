@@ -3,80 +3,137 @@
 ######################################################################################
 import pandas as pd
 import os
+import sys
+sys.path.insert(0, "src")
+from prep_fastq_download import get_fastq_links, call_download_fastqs
 
 configfile: "workflow/config/config.yaml"
 project = config["project"]
 
-collapse_config_df = pd.read_csv(config["collapse_config"],
+# Read the configuration file for metadata categories
+config_metadata_categories = pd.read_csv(config["config_metadata_categories"],
                      sep="\t", 
                      dtype={"target_col": str}).set_index("target_col", drop=False)
-TARGET_COLS = collapse_config_df.index.tolist()
+TARGET_COLS = config_metadata_categories.index.tolist()
 
-histograms_config_df = pd.read_csv(config["histograms_config"], 
-                     sep="\t", 
-                     dtype={"#colname": str}).set_index("#colname", drop=False)
-HIST_COLS = histograms_config_df.index.tolist()
+# Read the configuration file for FASTQ downloads
+config_fastq_downloads = pd.read_csv(config["config_fastq_downloads"], 
+            sep="\t", 
+            dtype={"run_accession": str}).set_index("run_accession", drop=False)
+RUN_ACCESSIONS = config_fastq_downloads.index.tolist()
 
 ## Declaring directory variables.
 dir_d = "data/"
 dir_s = "src/"
 dir_w = "workflow/"
 dir_r = f"results/{project}/"
+
 dir_r0 = f"{dir_r}0_data/"
-dir_r1 = f"{dir_r}1_metadata/"
-dir_r2 = f"{dir_r}2_histograms/"
-dir_r3 = f"{dir_r}3_fastq_downloads/"
-dir_r4 = f"{dir_r}4_krona_plots/"
-dir_r5 = f"{dir_r}5_map/"
+dir_r0_1 = f"{dir_r0}0-1_raw_list/"
+dir_r0_2 = f"{dir_r0}0-2_metadata/"
+dir_r0_3 = f"{dir_r0}0-3_fastq_downloads/"
+dir_r0_4 = f"{dir_r0}0-4_bowtie2_db/"
+
+dir_r1 = f"{dir_r}1_plots/"
+dir_r1_1 = f"{dir_r1}/1-1_histograms/"
+dir_r1_2 = f"{dir_r1}/1-2_krona_plots/"
+dir_r2 = f"{dir_r}2_map/"
 
 ## Ensuring all the previously declared directories exist.
 os.makedirs(dir_d, exist_ok=True)
 os.makedirs(dir_s, exist_ok=True)
 os.makedirs(dir_w, exist_ok=True)
-os.makedirs(dir_r0, exist_ok=True)
+os.makedirs(dir_r0_1, exist_ok=True)
+os.makedirs(dir_r0_2, exist_ok=True)
+os.makedirs(dir_r0_3, exist_ok=True)
+os.makedirs(dir_r0_4, exist_ok=True)
 os.makedirs(dir_r1, exist_ok=True)
 os.makedirs(dir_r2, exist_ok=True)
 os.makedirs(dir_r3, exist_ok=True)
-os.makedirs(dir_r4, exist_ok=True)
-os.makedirs(dir_r5, exist_ok=True)
 
 ######################################################################################
 #%% WORKFLOW RULES
 ######################################################################################
+
+def get_fastq_outputs(wildcards):
+    checkpoints.get_fastqs.get()  # wait for checkpoint to finish
+    FASTQS = glob_wildcards(dir_r0_3 + "{file}.fastq.gz").file
+    return expand(dir_r0_3 + "{file}.fastq.gz", file=FASTQS)
+
 rule all:
-    input: dir_r2 + "histogram.png"
+    input: dir_r0_2 + "clean_metadata.tsv", 
+           get_fastq_outputs
 
 rule check_bioprojects_list:
     input: config["bioprojects_list"]
-    output: dir_r0 + "bio-projects.txt"
+    output: dir_r0_1 + "bio-projects.txt"
     shell: "ln -s $(realpath {input}) {output}"
 
 rule get_bioprojects_metadata:
-    input: dir_r0 + "bio-projects.txt"
-    output: dir_r1 + "raw_metadata.tsv"
-    params: outdir=dir_r1
+    input: dir_r0_1 + "bio-projects.txt"
+    output: dir_r0_2 + "raw_metadata.tsv"
+    params: outdir=dir_r0_2
     shell: "./src/get_metadata.sh {input} {params.outdir}"
 
 rule categorize_metadata:
     input:
-        metadata=dir_r1 + "raw_metadata.tsv",
-        categories=lambda wc: collapse_config_df.loc[wc.col, "categories"]
+        metadata=dir_r0_2 + "raw_metadata.tsv",
+        categories=lambda wc: config_metadata_categories.loc[wc.col, "categories"]
     output:
-        dir_r1 + "categorized-{col}_metadata.tsv"
+        dir_r0_2 + "categorized-{col}_metadata.tsv"
     params:
-        id_col=lambda wc: collapse_config_df.loc[wc.col, "id_col"],
-        outdir=dir_r1
+        id_col=lambda wc: config_metadata_categories.loc[wc.col, "id_col"],
+        outdir=dir_r0_2
     shell:
         "python ./src/categorize_tsv_fields.py {input.metadata} {wildcards.col} "
         "-i {params.id_col} -O {params.outdir} -C {input.categories}"
 
 rule create_clean_metadata:
-    input: raw=dir_r1 + "raw_metadata.tsv",
-           tsvs=expand(dir_r1 + "categorized-{col}_metadata.tsv", col=TARGET_COLS)
-    output: dir_r1 + "clean_metadata.tsv"
-    shell: "./src/merge_categorized_tsvs.sh {input.raw} {output} {input.tsvs}"
+    input: raw=dir_r0_2 + "raw_metadata.tsv",
+           categorized=expand(dir_r0_2 + "categorized-{col}_metadata.tsv", col=TARGET_COLS)
+    output: dir_r0_2 + "clean_metadata.tsv"
+    shell: "./src/merge_categorized_tsvs.sh {input.raw} {output} {input.categorized}"
+
+# Creating a checkpoint to ensure all required fastq files are downloaded and
+# expected by downstream rules.
+checkpoint get_fastqs:
+    input: dir_r0_2 + "clean_metadata.tsv"
+    output: dir_r0_3 + ".download_complete.txt"
+    run:
+        clean_metadata_df = pd.read_csv(input[0], sep="\t")
+        links = get_fastq_links(clean_metadata_df, RUN_ACCESSIONS)
+        if links:    
+            result = call_download_fastqs(output[0], links)
+            if result.returncode != 0:
+                raise RuntimeError(f"Download failed:\n{result.stderr}")
+        open(output[0], "w").close()
+
+rule get_bowtie2_db:
+    input: get_fastq_outputs,
+           dir_r0_3 + ".download_complete.txt" # Check if needed
+    output: dir_r0_4 + "" # To be completed
+    params: db_v=config["bowtie2db_version"],
+            outdir=dir_r0_4
+    shell: "metaphlan --install --index {params.db_v} --db_dir {params.outdir}"
+
+rule plot_kronas:
+    input: get_fastq_outputs,
+           dir_r0_3 + ".download_complete.txt", # Check if needed
+           dir_r0_4 + "" # To be completed
+    output: expand(dir_r2 + "") # To be completed
+    params: db_dir=dir_r0_4,
+            indir=dir_r0_3,
+            outdir=dir_r0_3,
+            run_accession="" # To be completed
+    shell:
+        """
+        ./src/run_metaphlan.sh {params.db_dir} {params.indir} {params.run_accession} {params.outdir}
+        """
 
 rule launch_app:
-    input: dir_r1 + "clean_metadata.tsv"
-    output: dir_r2 + "histogram.png"
+    input: dir_r0_2 + "clean_metadata.tsv",
+           get_fastq_outputs,
+           dir_r0_3 + ".download_complete.txt"
+           #expand(dir_r0_3 + "{file}.fastq.gz", file=get_fastq_outputs)
+    # output: dir_r1 + "histogram.png"
     shell: "streamlit run ./src/main.py"

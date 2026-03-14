@@ -1,4 +1,4 @@
 results/
-.snakemake/
+.*/
 *.log
 src/__pycache__/
