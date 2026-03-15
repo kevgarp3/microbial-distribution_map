@@ -5,3 +5,4 @@ results/
 *.log
 src/__pycache__/
 workflow/envs/*.lock*
+workflow/config/config.yaml
