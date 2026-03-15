@@ -69,6 +69,17 @@ snakemake --cores <N> --use-conda -n	# You may want to try a dry-run first.
 snakemake --cores <N> --use-conda
 ```
 
+## Useful Tips
+
+* Backup all produced files.
+* The related bug should have been fixed, but... if Snakemake gets stuck and tries to produce already existing files for any reason. Running the following commands may come in handy.
+
+```BASH
+rm -rf .snakemake/metadata/
+snakemake --touch
+snakemake -n
+```
+
 ## Commands
 
 All source code and Snakemake-enabled workflow can be cloned from the following GitHub repository: [https://github.com/kevgarp3/genome-based_phylogeny](https://github.com/kevgarp3/microbial-distribution_map)

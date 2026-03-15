@@ -73,15 +73,17 @@ def render_map(df, krona_dir, map_theme):
     # [120, 120, 120, 160]  # Gray
     # [220, 50, 50, 200]    # Red
     # [30, 144, 255, 180]   # Blue
+    df_valid["color"] = df_valid["color"].apply(lambda x: [int(v) for v in x])
 
     # Build HTML tooltip: all columns except lat/lon/color/has_krona.
     tooltip_cols = [c for c in df_valid.columns if c not in ("lat", "lon", "color", "has_krona")]
     # Per-point HTML tooltip — to conditionally include krona-related notes.
     df_valid["tooltip"] = df_valid.apply(
         lambda row: "".join(f"<b>{col}:</b> {row[col]}<br/>" for col in tooltip_cols) +
-                    ("<br/><i style='color:1E90FFB4'>🔬 Available krona plot</i>" if row["has_krona"] else ""),
+                    ("<br/><i style='color:#1E90FF'>🔬 Available krona plot</i>" if row["has_krona"] else ""),
                     axis=1
     )
+
     # Setting the map style depending on the chosen map_theme (dark/light)
     # Using free CARTO basemaps (without any API key/token needed)
     if map_theme == 'dark':
@@ -91,7 +93,7 @@ def render_map(df, krona_dir, map_theme):
 
     layer = pdk.Layer(
         "ScatterplotLayer",
-        data=df_valid,
+        data=df_valid.to_dict(orient="records"),
         get_position="[lon, lat]",
         get_radius=8000,        # metres — adjust to taste
         radius_min_pixels=3,    # never smaller than 3px (zoomed out)

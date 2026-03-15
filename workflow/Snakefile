@@ -64,12 +64,8 @@ for dir in all_dirs:
 #%% Declaring essential functions
 ######################################################################################
 
-def get_fastq_outputs(wildcards):
-    checkpoints.get_fastqs.get()  # wait for checkpoint to finish
-    FASTQS = glob_wildcards(dir_r0_3 + "{file}.fastq.gz").file
-    return expand(dir_r0_3 + "{file}.fastq.gz", file=FASTQS)
-
 def get_fastqs_for_metaphlan(wildcards):
+    checkpoints.get_fastqs.get()  # wait for checkpoint before globbing
     FASTQS = sorted(glob_wildcards(dir_r0_3 + "{file}.fastq.gz").file)
     run_fastqs = [f"{dir_r0_3}{f}.fastq.gz" for f in FASTQS if f.startswith(wildcards.run_acc)]
     
@@ -139,7 +135,6 @@ checkpoint get_fastqs:
 rule get_bowtie2_db:
     input: db_dir=dir_d_db,
            clean=dir_r0_2 + "clean_metadata.tsv",
-           fastqs=get_fastq_outputs,
            dwld_check=dir_r0_3 + ".workflow_fastqs_saved.txt"
     output: expand(dir_r0_4 + config["bowtie2db_version"] + "{ext}", ext=BOWTIE2DB_EXTS)
     params: db_v=config["bowtie2db_version"],
@@ -155,17 +150,18 @@ rule get_bowtie2_db:
 
 rule get_metaphlan_profile:
     input: db_files=expand(dir_r0_4 + config["bowtie2db_version"] + "{ext}", ext=BOWTIE2DB_EXTS),
-           fastqs=lambda wc: get_fastqs_for_metaphlan(wc)
+           dwld_check=dir_r0_3 + ".workflow_fastqs_saved.txt"
     output: profile=dir_r1_2_pf + "{run_acc}_profile.tsv",
             mapout=dir_r1_2_pf + "{run_acc}.bowtie2.bz2"
     params: db_v=config["bowtie2db_version"],
-            db_dir=dir_r0_4
+            db_dir=dir_r0_4,
+            fastqs=lambda wc: get_fastqs_for_metaphlan(wc) # Moved from input to params
     conda: conda_env
     shell:
         """
-        FASTQS=$(echo "{input.fastqs}" | tr " " ",")
+        FASTQS=$(echo "{params.fastqs}" | tr " " ",")
         metaphlan $FASTQS --input_type fastq \
-            --nproc 15 \
+            --nproc 10 \
             --index {params.db_v} \
             --db_dir {params.db_dir} \
             --mapout {output.mapout} \
@@ -194,18 +190,17 @@ rule launch_app:
     shell: "streamlit run ./src/main.py"
 
 rule prepare_next_app_launch:
-    input: dir_r0_3 + ".workflow_fastqs_saved.txt",
-           dir_r1_1 + ".app_histograms_viewed.txt",
+    input: dir_r1_1 + ".app_histograms_viewed.txt",
            dir_r2 + ".app_map_viewed.txt"
     output: "disappear.sh"
     shell:
            """
-            echo "#!/bin/bash > {output}
-            echo "# This is a self-destructing file. Flagging the end of the Snakemake workflow." >> {output}
-            echo "echo "Everything is now prepared for the next app launch via Snakemake!"" >> {output} 
-            echo "echo "Assuming the workflow is ready... launch the app using:" >> {output}
-            echo "echo "snakemake --cores <n> --use-conda"" >> {output} 
-            echo "(sleep 3 && rm -- "$0") &" >> {output}
-            rm {input}
-            chmod +x {output} && ./{output}
-            """
+           echo "#!/bin/bash" > {output}
+           echo "# This is a self-destructing file. Flagging the end of the Snakemake workflow." >> {output}
+           echo "echo 'Everything is now prepared for the next app launch via Snakemake!'" >> {output} 
+           echo "echo 'Assuming the workflow is ready... launch the app using:'" >> {output}
+           echo "echo 'snakemake --cores <n> --use-conda'" >> {output} 
+           echo "(sleep 5 && rm -- {output}) &" >> {output}
+           rm {input}
+           chmod +x {output} && ./{output}
+           """

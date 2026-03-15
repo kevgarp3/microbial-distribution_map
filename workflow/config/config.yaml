@@ -9,5 +9,6 @@ config_metadata_categories: 'workflow/config/skin-microbiome_config_metadata_cat
 config_fastq_downloads: 'workflow/config/skin-microbiome_config_fastq_downloads.tsv'
 # Edit the bowtie2db_version name if pertinent.
 bowtie2db_version: 'mpa_vJan21_CHOCOPhlAnSGB_202103' ### vJan25_CHOCOPhlAnSGB_202503
-# Path to the YAML describing the conda environment to be used:
-conda_env: 'envs/microbial-distribution-map'
+# Path to the YAML describing the conda environment to be used.
+# It can be replaced with the path to the created conda environment: .../envs/microbial-distribution-map (see README.md)
+conda_env: 'envs/microbial-distribution-map.yaml'
