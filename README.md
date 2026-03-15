@@ -32,11 +32,6 @@ To achieve this the following steps are performed:
     └── envs        # Contains a YAML specifying the workflow's software dependencies. 
 ```
 
-## Filters Choice
-
-* Maximum GC content (%): 35
-* Minimum scaffold length (bp): 3,000
-
 ## Links to Download Data
 
 The databases used in this project can be downloaded by using `wget` with each of the following links:
@@ -53,20 +48,27 @@ The following list presents all software dependencies (and versions) required to
 * 
 * 
 
-All the previous dependencies can be easily installed within a conda environment by running the following command:
+The quickest way of installing all previously listed software dependencies is using the following command (all names in between "<>" can be replaced for the user's convenience).
 
 ```BASH
-conda env create -f workflow/envs/genome-based_phylogeny.yaml
-conda activate genome-based_phylogeny
+conda env create --prefix <workflow/envs/microbial-distribution-map> -f <workflow/envs/microbial-distribution-map.yaml>
 ```
 
-(ONCE THE WORKFLOW IS IMPLEMENTED IN SNAKEMAKE!)
-Alternatively, the following command should trigger the pipeline:
+Alternatively,
 
 ```BASH
-snakemake -n --use-conda
+conda env create -f <workflow/envs/microbial-distribution-map.yaml>
+conda create --prefix <workflow/envs/microbial-distribution-map> --clone <microbial-distribution-map>
+```
+
+Then you can edit the <workflow/config/config.yaml> to update the <conda_env> to point to the <workflow/envs/microbial-distribution-map>.
+After doing so, you can comfortably run the following command (just edit <N>, pertinently), without experimenting an unnecessary excessively time-consuming installation of software dependencies.
+
+```BASH
+snakemake --cores <N> --use-conda -n	# You may want to try a dry-run first.
+snakemake --cores <N> --use-conda
 ```
 
 ## Commands
 
-All source code and workflow implementation (via Snakemake) can be cloned from the following GitHub repository: [https://github.com/kevgarp3/genome-based_phylogeny](https://github.com/kevgarp3/genome-based_phylogeny)
+All source code and Snakemake-enabled workflow can be cloned from the following GitHub repository: [https://github.com/kevgarp3/genome-based_phylogeny](https://github.com/kevgarp3/microbial-distribution_map)

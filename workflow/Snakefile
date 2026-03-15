@@ -10,7 +10,7 @@ from snakemake.io import glob_wildcards
 
 configfile: "workflow/config/config.yaml"
 project = config["project"]
-conda_env_yaml = config["conda_env_yaml"]
+conda_env = config["conda_env"]
 
 ## Read the configuration file for metadata categories
 config_metadata_categories = pd.read_csv(config["config_metadata_categories"],
@@ -49,7 +49,7 @@ dir_r1 = f"{dir_r}1_plots/"
 dir_r1_1 = f"{dir_r1}1-1_histograms/"
 dir_r1_2 = f"{dir_r1}1-2_krona_plots/"
 dir_r1_2_pf = f"{dir_r1_2}prep-files/"
-dir_r2 = f"{dir_r}2_map/"
+dir_r2 = f"{dir_r}2_maps/"
 
 ## Ensuring all the previously declared directories exist.
 all_dirs = [dir_d_db, dir_s, dir_w, 
@@ -126,7 +126,7 @@ rule create_clean_metadata:
 checkpoint get_fastqs:
     input: dir_r0_2 + "clean_metadata.tsv"
     output: dir_r0_3 + ".workflow_fastqs_saved.txt"
-    conda: conda_env_yaml
+    conda: conda_env
     run:
         clean_metadata_df = pd.read_csv(input[0], sep="\t")
         links = get_fastq_links(clean_metadata_df, RUN_ACCESSIONS)
@@ -144,7 +144,7 @@ rule get_bowtie2_db:
     output: expand(dir_r0_4 + config["bowtie2db_version"] + "{ext}", ext=BOWTIE2DB_EXTS)
     params: db_v=config["bowtie2db_version"],
             db_dir=dir_r0_4
-    conda: conda_env_yaml
+    conda: conda_env
     shell: 
         """
         metaphlan --install --index {params.db_v} --db_dir {input.db_dir}
@@ -160,7 +160,7 @@ rule get_metaphlan_profile:
             mapout=dir_r1_2_pf + "{run_acc}.bowtie2.bz2"
     params: db_v=config["bowtie2db_version"],
             db_dir=dir_r0_4
-    conda: conda_env_yaml
+    conda: conda_env
     shell:
         """
         FASTQS=$(echo "{input.fastqs}" | tr " " ",")
@@ -177,23 +177,26 @@ rule get_krona_precursors:
     input: profile=dir_r1_2_pf + "{run_acc}_profile.tsv",
            mapout=dir_r1_2_pf + "{run_acc}.bowtie2.bz2"
     output: dir_r1_2_pf + "{run_acc}_krona.tsv"
+    conda: conda_env
     shell: "metaphlan2krona.py --profile {input.profile} --krona {output}"
 
 rule get_krona_htmls:
     input: dir_r1_2_pf + "{run_acc}_krona.tsv"
     output: dir_r1_2 + "{run_acc}_krona.html"
+    conda: conda_env
     shell: "ktImportText {input} -o {output}"
 
 rule launch_app:
     input: expand(dir_r1_2 + "{run_acc}_krona.html", run_acc=RUN_ACCESSIONS),
-    output: dir_r1_1 + ".app_histograms_saved.txt",
-            dir_r2 + ".app_map_saved.txt"
+    output: dir_r1_1 + ".app_histograms_viewed.txt",
+            dir_r2 + ".app_map_viewed.txt"
+    conda: conda_env
     shell: "streamlit run ./src/main.py"
 
 rule prepare_next_app_launch:
     input: dir_r0_3 + ".workflow_fastqs_saved.txt",
-           dir_r1_1 + ".app_histograms_saved.txt",
-           dir_r2 + ".app_map_saved.txt"
+           dir_r1_1 + ".app_histograms_viewed.txt",
+           dir_r2 + ".app_map_viewed.txt"
     output: "disappear.sh"
     shell:
            """

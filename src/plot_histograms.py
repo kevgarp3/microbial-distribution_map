@@ -23,13 +23,21 @@ import plotly.express as px
 ######################################################################################
 #%% Section 1: Declaring the functions.
 ######################################################################################
+def rm_category(colname) -> str:
+    return colname.strip().replace("_category", "").replace("_", " ").title()
+
+def add_category(colname) -> str:
+    return colname.lower().replace(" ", "_") + "_category"
+
 # Declaring a function for plotting single-column histograms.
 def plot_singleCol_histogram(df, col):
-    fig = px.histogram(df, x=col, title="Distribution of " + col)
+    fig = px.histogram(df, x=add_category(rm_category(col)), title="Distribution of " + rm_category(col))
     return fig
 
 # Declaring a function for plotting a two-column co-dependent histogram.
 def plot_twoCol_histogram(df, col1, col2):
-    fig = px.histogram(df, x=col1, color=col2, barmode="overlay", 
-                        title="Distribution of " + col1 + " by " + col2)
+    fig = px.histogram(df, x=add_category(rm_category(col1)),
+                       color=add_category(rm_category(col2)),
+                       barmode="overlay", 
+                       title="Distribution of " + rm_category(col1) + " per " + rm_category(col2))
     return fig
