@@ -1,6 +1,6 @@
 # README: Microbial Species Distribution Map.
 
-This workflow enables building a Microbial Species Distribution Map based on amplicon or shotgun sequencing data of samples containing sequenced genetic information of multiple organisms.
+This Snakemake-enabled workflow enables building a Microbial Species Distribution Map based on amplicon or shotgun sequencing data of metagenomic samples. The workflow includes the launch of an app developed with Streamlit, with all user-friendly visualization front-end functionalities.
 
 To run the whole workflow (including app launch run), but first read "Software Dependencies":
 ```BASH
