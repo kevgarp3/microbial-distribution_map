@@ -39,13 +39,6 @@ streamlit run ./src/main.py
     └── envs        # Contains a YAML specifying the workflow's software dependencies. 
 ```
 
-## Links to Download Data
-
-The databases used in this project can be downloaded by using `wget` with each of the following links:
-
-* NCBI Taxonomy Database: ftp://ftp.ebi.ac.uk/pub/databases/taxonomy/taxonomy.dat
-* SwissProt Database: ftp://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/complete/uniprot_sprot.dat.gz
-
 ## Software Dependencies
 
 The following list presents all software dependencies (and versions) required to execute this workflow:
