@@ -18,7 +18,7 @@ histograms_dir = project_dir + "1_plots/1-1_histograms/"
 kronas_dir = project_dir + "1_plots/1-2_krona_plots/"
 maps_dir = project_dir + "2_maps/"
 
-st.title("Microbiome-Distribution Map")
+st.title("MicrobS PET: Microbiome Sequencing Projects-Explorer Tool")
 if st.sidebar.button("Close app"):
     os.kill(os.getpid(), signal.SIGTERM)
 

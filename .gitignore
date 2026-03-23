@@ -1,3 +1,4 @@
+doc/
 data/
 results/
 .*/
@@ -6,3 +7,5 @@ results/
 src/__pycache__/
 workflow/envs/*.lock*
 workflow/config/config.yaml
+*.mp4
+*.jpg

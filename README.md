@@ -2,28 +2,35 @@
 
 This workflow enables building a Microbial Species Distribution Map based on amplicon or shotgun sequencing data of samples containing sequenced genetic information of multiple organisms.
 
-To achieve this the following steps are performed:
-
-1. 
-2. 
-3. 
-4. 
-5. 
+To run the whole workflow (including app launch run), but first read "Software Dependencies":
+```BASH
+snakemake --cores <N> --use-conda
+```
+Otherwise launch the app directly:
+```BASH
+streamlit run ./src/main.py
+```
 
 ## Project's Tree Directory
 
 ```TEXT
 ├── README.md       # The README file for the project
 ├── data            # Contains the raw data for all projects using this workflow. 
-│
+│   └── databases
+│       └── bowtie2_db
+├── doc             # Contains the project report and the related presentation.
 ├── results             # Contains workflow-derived files, per run and stage.
 │   └── skin-microbiome # Run (specific project)
-│       ├── 0_data      # Contains the data used throughout the workflow.
-│       │   ├── bio-projects.txt    # All bio-project IDs of interest.
-│       │   ├── metadata_seq-data   # Contains all the metadata of the FASTQ files.
-│       │   └── seq-data            # Contains all related FASTQ files.
-│       ├── 1_
-│       │   ├── 
+│       ├── 0_data
+│       │   ├── 0-1_raw_list
+│       │   ├── 0-2_metadata
+│       │   ├── 0-3_fastq_downloads
+│       │   └── 0-4_bowtie2_db
+│       ├── 1_plots
+│       │   ├── 1-1_histograms
+│       │   └── 1-2_krona_plots
+│       │       └── prep-files
+│       └── 2_maps
 │
 ├── src             # Contains the project's code.
 └── workflow        # Contains files ensuring reproducibility with Snakemake
@@ -43,10 +50,14 @@ The databases used in this project can be downloaded by using `wget` with each o
 
 The following list presents all software dependencies (and versions) required to execute this workflow:
 
-* 
-* 
-* 
-* 
+* python=3.13.12
+* pandas=3.0.1
+* metaphlan=4.2.4
+* krona=2.8.1
+* plotly=6.6.0
+* pip
+* streamlit==1.55.0
+* st-theme==1.2.3
 
 The quickest way of installing all previously listed software dependencies is using the following command (all names in between "<>" can be replaced for the user's convenience).
 
