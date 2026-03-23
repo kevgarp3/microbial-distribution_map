@@ -93,4 +93,4 @@ snakemake -n
 
 ## Commands
 
-All source code and Snakemake-enabled workflow can be cloned from the following GitHub repository: [https://github.com/kevgarp3/genome-based_phylogeny](https://github.com/kevgarp3/microbial-distribution_map)
+All source code and Snakemake-enabled workflow can be cloned from the following GitHub repository: [https://github.com/kevgarp3/microbial-distribution_map](https://github.com/kevgarp3/microbial-distribution_map)
